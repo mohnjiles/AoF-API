@@ -13,6 +13,7 @@ const SteamGames = require('./steam-games');
 const DKP = require('./dkp');
 const character = require("./character");
 const game = require('./games');
+const news = require('./news');
 
 
 app.use(bodyParser.json());
@@ -85,26 +86,47 @@ app.get('/api/games', async (req, res) => {
   res.json(games);
 });
 
+app.get('/api/news', async (req, res) => {
+  let newses = await news.findAll();
+  res.json(newses);
+});
+
+
+
 app.get('/api/news/ffxiv', async (req, res) => {
   const ffxivSubredditUrl = 'https://www.reddit.com/r/ffxiv/top.rss?t=week';
   const gamerEscapeUrl = 'https://gamerescape.com/category/ffxiv/feed/';
   let results = [];
 
   rssParser.parseURL(ffxivSubredditUrl, function(err, parsed) {
+
+    if (err) {
+      console.log(err);
+      return;
+    }
+
     let title = parsed.feed.title;
     let entries = parsed.feed.entries.slice(0, 5).map((entry, index) => {
       return { title: entry.title, url: entry.link };
     });
     results.push({ title: title, entries: entries });
-
-    rssParser.parseURL(gamerEscapeUrl, function(err, parsed) {
-      let title = parsed.feed.title;
-      let entries = parsed.feed.entries.slice(0, 5).map((entry, index) => {
-        return { title: entry.title, url: entry.link };
-      });
-      results.push({ title: title, entries: entries });
-      res.json(results);
-    });
+    res.json(results);
+    // console.log(results);
+    //
+    // rssParser.parseURL(gamerEscapeUrl, function(err, parsed) {
+    //
+    //   if (err) {
+    //     console.log(err);
+    //     return;
+    //   }
+    //
+    //   let title = parsed.feed.title;
+    //   let entries = parsed.feed.entries.slice(0, 5).map((entry, index) => {
+    //     return { title: entry.title, url: entry.link };
+    //   });
+    //   results.push({ title: title, entries: entries });
+    //   res.json(results);
+    // });
   });
 });
 
