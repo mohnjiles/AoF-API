@@ -7,13 +7,17 @@ const jwks = require('jwks-rsa');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const rssParser = require('rss-parser');
+const Sequelize = require('sequelize');
 
 const users = require('./users');
 const SteamGames = require('./steam-games');
 const DKP = require('./dkp');
+const DKPEvent = require('./dkp-event');
 const character = require("./character");
 const game = require('./games');
 const news = require('./news');
+const Event = require('./events');
+const moment = require('moment');
 
 
 app.use(bodyParser.json());
@@ -31,10 +35,6 @@ const authCheck = jwt({
     issuer: "https://aof.auth0.com/",
     algorithms: ['RS256']
 });
-
-app.get('/api/unprotected', (req, res) => {
-  res.json(foodJokes);
-})
 
 app.get('/api/user/:email', async (req,res) => {
   let email = req.params.email;
@@ -57,6 +57,44 @@ app.post('/api/user', async (req, res) => {
       res.status(400).send(err.code);
     }
   });
+});
+
+app.post('/api/dkp', async (req, res) => {
+  let selectedUsers = req.body.selectedUsers;
+  let dkpAmount = req.body.dkpAmount;
+  let reason = req.body.reason;
+
+  let dkps = await DKP.findAll({ where: {user_id: selectedUsers}});
+
+  for (var i = 0; i < dkps.length; i++) {
+    let currentDkp = dkps[i];
+
+    let updateValues = { dkp: parseInt(currentDkp.dkp) + parseInt(dkpAmount) };
+    await currentDkp.update(updateValues).catch(e => {
+      console.log(e);
+      res.status(400).send(e);
+      return;
+    });
+
+    await DKPEvent.create({user_id: currentDkp.user_id, dkp_change: dkpAmount, reason: reason})
+      .catch(err => {
+        res.status(400).send(err);
+      });
+  }
+  res.status(200).send();
+});
+
+app.post('/api/news', async (req, res) => {
+  let title = req.body.title;
+  let content = req.body.content;
+  await news.create({title: title, content: content});
+  res.status(200).send();
+});
+
+app.get('/api/dkpevents/:id', async (req, res) => {
+  let id = req.params.id;
+  let results = await DKPEvent.findAll({where: {user_id: id}, order: Sequelize.literal('created_at DESC')});
+  res.json(results);
 });
 
 app.get('/api/user/id/:ids', async(req, res) => {
@@ -90,8 +128,6 @@ app.get('/api/news', async (req, res) => {
   let newses = await news.findAll();
   res.json(newses);
 });
-
-
 
 app.get('/api/news/ffxiv', async (req, res) => {
   const ffxivSubredditUrl = 'https://www.reddit.com/r/ffxiv/top.rss?t=week';
@@ -128,6 +164,15 @@ app.get('/api/news/ffxiv', async (req, res) => {
     //   res.json(results);
     // });
   });
+});
+
+app.get('/api/events', async (req, res) => {
+  let events = await Event.findAll({where: {
+    start_time: {
+      $gte: moment().toDate()
+    }
+  }});
+  res.json(events);
 });
 
 app.listen(3333);
