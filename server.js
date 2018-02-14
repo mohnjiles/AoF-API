@@ -18,6 +18,7 @@ const game = require('./games');
 const news = require('./news');
 const Event = require('./events');
 const moment = require('moment');
+const chrono = require('chrono-node');
 
 
 app.use(bodyParser.json());
@@ -64,6 +65,11 @@ app.post('/api/dkp', async (req, res) => {
   let dkpAmount = req.body.dkpAmount;
   let reason = req.body.reason;
 
+  if (selectedUsers == null || selectedUsers.length <= 0) {
+    res.status(400).send("No users selected");
+    return;
+  }
+
   let dkps = await DKP.findAll({ where: {user_id: selectedUsers}});
 
   for (var i = 0; i < dkps.length; i++) {
@@ -73,12 +79,11 @@ app.post('/api/dkp', async (req, res) => {
     await currentDkp.update(updateValues).catch(e => {
       console.log(e);
       res.status(400).send(e);
-      return;
     });
 
     await DKPEvent.create({user_id: currentDkp.user_id, dkp_change: dkpAmount, reason: reason})
       .catch(err => {
-        res.status(400).send(err);
+        res.status(400).send(err.code);
       });
   }
   res.status(200).send();
@@ -87,7 +92,20 @@ app.post('/api/dkp', async (req, res) => {
 app.post('/api/news', async (req, res) => {
   let title = req.body.title;
   let content = req.body.content;
-  await news.create({title: title, content: content});
+
+  if (title.length <= 0) {
+    res.status(400).send("Title must not be empty");
+    return;
+  }
+
+  if (content.length <= 0) {
+    res.status(400).send("Content must not be empty");
+    return;
+  }
+
+  await news.create({title: title, content: content}).catch(err => {
+    res.status(400).send(err.code);
+  });
   res.status(200).send();
 });
 
@@ -125,7 +143,7 @@ app.get('/api/games', async (req, res) => {
 });
 
 app.get('/api/news', async (req, res) => {
-  let newses = await news.findAll();
+  let newses = await news.findAll({order: Sequelize.literal('createdAt DESC')});
   res.json(newses);
 });
 
@@ -173,6 +191,24 @@ app.get('/api/events', async (req, res) => {
     }
   }});
   res.json(events);
+});
+
+app.post('/api/events', async (req, res) => {
+  let startTime = req.body.startTime;
+  let name = req.body.name;
+  let minILvl = req.body.minILvl;
+  let date = chrono.parseDate(startTime);
+
+  if (date == null) {
+    res.status(400).send("Error parsing date");
+    return;
+  }
+
+  await Event.create({ name: name, min_ilvl: minILvl, start_time: date }).catch(err => {
+    console.log(err);
+    res.status(400).send(err.code);
+  });
+  res.json("ok");
 });
 
 app.listen(3333);
