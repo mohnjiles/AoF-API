@@ -1,5 +1,4 @@
 const config = require('./config.json');
-const users = require('./users');
 
 const Sequelize = require('sequelize');
 const sequelize = new Sequelize(config.dbName, config.dbUser, config.dbPassword, {
@@ -7,22 +6,19 @@ const sequelize = new Sequelize(config.dbName, config.dbUser, config.dbPassword,
   host: config.dbServer
 });
 
-const Event = sequelize.define('event', {
+const classes = sequelize.define('classes', {
   id: {
     type: Sequelize.INTEGER,
     primaryKey: true
   },
+  user_id: Sequelize.INTEGER,
+  job: Sequelize.TEXT,
   name: Sequelize.TEXT,
-  attendees: Sequelize.TEXT,
-  min_ilvl: Sequelize.INTEGER,
-  start_time: Sequelize.DATE,
-  created_at: Sequelize.DATE,
-  updated_at: Sequelize.DATE
+  avatar: Sequelize.TEXT,
+  item_level: Sequelize.INTEGER,
 }, {
   timestamps: false,
-  tableName: "events2"
+  tableName: "classes"
 });
 
-// DKP.belongsTo(users, {foreignKey: 'user_id'})
-
-module.exports = Event;
+module.exports = classes;

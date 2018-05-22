@@ -19,6 +19,7 @@ const news = require('./news');
 const Event = require('./events');
 const moment = require('moment');
 const chrono = require('chrono-node');
+const classes = require('./classes');
 
 
 app.use(bodyParser.json());
@@ -209,6 +210,31 @@ app.post('/api/events', async (req, res) => {
     res.status(400).send(err.code);
   });
   res.json("ok");
+});
+
+app.get('/api/job/:ids', async (req, res) => {
+  let ids = req.params.ids;
+  console.log(ids);
+  ids = ids.split(",").map(it => parseInt(it));
+  let job = await classes.findAll({where: {id: ids}});
+  res.json(job);
+});
+
+app.post("/api/lodestone", async(req, res) => {
+  let url = req.body.url;
+  let id = req.body.id;
+  let lodestoneIdRegex = /([0-9])\w+/g
+  let result = url.match(lodestoneIdRegex);
+
+  let user = await users.findOne({where: {id: id}});
+
+  let updateValues = { lodestone_id: result[0] };
+  user = await user.update(updateValues).catch(e => {
+    console.log(e);
+    res.status(400).send(e);
+  });
+
+  res.status(200).send("OK");
 });
 
 app.listen(3333);

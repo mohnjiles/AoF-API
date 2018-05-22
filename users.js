@@ -16,7 +16,7 @@ const users = sequelize.define('users', {
   name: Sequelize.TEXT,
   email: Sequelize.TEXT,
   admin: Sequelize.INTEGER,
-  steam_id: Sequelize.TEXT,
+  lodestone_id: Sequelize.TEXT,
   timezone: Sequelize.TEXT
 }, {
   timestamps: false
