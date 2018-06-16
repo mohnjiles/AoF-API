@@ -8,6 +8,9 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 const rssParser = require('rss-parser');
 const Sequelize = require('sequelize');
+const request = require('request');
+const apicache = require('apicache');
+let cache = apicache.middleware;
 
 const users = require('./users');
 const SteamGames = require('./steam-games');
@@ -20,7 +23,7 @@ const Event = require('./events');
 const moment = require('moment');
 const chrono = require('chrono-node');
 const classes = require('./classes');
-
+const config = require('./config.json');
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -61,7 +64,7 @@ app.post('/api/user', async (req, res) => {
   });
 });
 
-app.post('/api/dkp', async (req, res) => {
+app.post('/api/dkp', cache('5 minutes'), async (req, res) => {
   let selectedUsers = req.body.selectedUsers;
   let dkpAmount = req.body.dkpAmount;
   let reason = req.body.reason;
@@ -90,7 +93,7 @@ app.post('/api/dkp', async (req, res) => {
   res.status(200).send();
 });
 
-app.post('/api/news', async (req, res) => {
+app.post('/api/news', cache('5 minutes'), async (req, res) => {
   let title = req.body.title;
   let content = req.body.content;
 
@@ -110,7 +113,7 @@ app.post('/api/news', async (req, res) => {
   res.status(200).send();
 });
 
-app.get('/api/dkpevents/:id', async (req, res) => {
+app.get('/api/dkpevents/:id', cache('5 minutes'), async (req, res) => {
   let id = req.params.id;
   let results = await DKPEvent.findAll({where: {user_id: id}, order: Sequelize.literal('created_at DESC')});
   res.json(results);
@@ -138,7 +141,7 @@ app.get('/api/dkp', async (req, res) => {
   res.json(usrs);
 });
 
-app.get('/api/games', async (req, res) => {
+app.get('/api/games', cache('12 hours'), async (req, res) => {
   let games = await game.findAll({ where: { currently_playing: 1 } });
   res.json(games);
 });
@@ -205,7 +208,7 @@ app.post('/api/events', async (req, res) => {
     return;
   }
 
-  await Event.create({ name: name, min_ilvl: minILvl, start_time: date }).catch(err => {
+  await Event.create({ name: name, min_ilvl: minILvl, start_time: date, attendees: '' }).catch(err => {
     console.log(err);
     res.status(400).send(err.code);
   });
@@ -235,6 +238,19 @@ app.post("/api/lodestone", async(req, res) => {
   });
 
   res.status(200).send("OK");
+});
+
+app.get('/api/fflogs/:name/:server/:metric', async (req, res) => {
+  let name = req.params.name;
+  let server = req.params.server;
+  let metric = req.params.metric;
+  let apiKey = config.fflogs_api_key;
+
+  request(`https://www.fflogs.com/v1/parses/character/${name}/${server}/NA?metric=${metric}&api_key=${apiKey}`, { json: true }, (err, resp, body) => {
+    if (err) { return console.log(err); }
+
+    res.json(body);
+  });
 });
 
 app.listen(3333);
